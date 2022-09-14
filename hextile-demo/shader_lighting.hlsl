@@ -70,19 +70,19 @@ VS_OUTPUT RenderSceneVS( VS_INPUT input)
 	// Transform the position from object space to homogeneous projection space
 	Output.Position = mul( float4(vP,1.0), g_mViewProjection );
 
-
+	Output.normal = vP;
 
 	// position & normal
-	Output.normal = normalize(mul((float3x3) g_mWorldToLocal, input.Normal.xyz));	// inverse transposed for normal
-	Output.tangent = float4( normalize(mul(input.Tangent.xyz, (float3x3) g_mLocToWorld)), input.Tangent.w );
+	//Output.normal = normalize(mul((float3x3) g_mWorldToLocal, input.Normal.xyz));	// inverse transposed for normal
+	//Output.tangent = float4( normalize(mul(input.Tangent.xyz, (float3x3) g_mLocToWorld)), input.Tangent.w );
 
-	Output.TextureUV = input.TextureUV.xy;
-	Output.TextureUV2 = input.TextureUV2.xy;
-	
-	// flip to upper left origin
-	Output.TextureUV = float2(Output.TextureUV.x,1-Output.TextureUV.y); 
-	Output.TextureUV2 = float2(Output.TextureUV2.x,1-Output.TextureUV2.y); 
-	Output.tangent.w = -Output.tangent.w;
+	//Output.TextureUV = input.TextureUV.xy;
+	//Output.TextureUV2 = input.TextureUV2.xy;
+	//
+	//// flip to upper left origin
+	//Output.TextureUV = float2(Output.TextureUV.x,1-Output.TextureUV.y); 
+	//Output.TextureUV2 = float2(Output.TextureUV2.x,1-Output.TextureUV2.y); 
+	//Output.tangent.w = -Output.tangent.w;
 
 	return Output;    
 }
@@ -354,6 +354,11 @@ float4 GroundExamplePS( VS_OUTPUT In ) : SV_TARGET0
 
 
 	float3 vN = nrmBaseNormal;
+
+	float3 color, weights;
+	FetchColorAndWeight(color, weights, st0);
+
+	return float4(weights.xyz, 1.0);
 
 	if(g_bHexColorEnabled)
 	{

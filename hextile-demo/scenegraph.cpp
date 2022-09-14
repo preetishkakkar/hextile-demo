@@ -68,12 +68,13 @@ static CMeshDraw g_pMeshes[NUM_MESHES];
 enum DRAWABLE_ID
 {
 	GROUND_EXAMPLE=0,
+	NUM_DRAWABLES,
 	SPHERE_EXAMPLE,
 
 	PIRATE_EXAMPLE,
-	ROCK_EXAMPLE,
+	ROCK_EXAMPLE
 	
-	NUM_DRAWABLES
+	
 };
 
 enum
@@ -91,7 +92,7 @@ static DWORD g_dwShaderFlags;
 
 static CShader g_vert_shader;
 static CShader g_vert_shader_basic;
-static CShader g_pix_shader_basic_white;
+//static CShader g_pix_shader_basic_white;
 static CShader g_pix_shader[NUM_PS_VARIANTS*NUM_DRAWABLES];
 
 static CShaderPipeline g_ShaderPipelines_DepthOnly[NUM_DRAWABLES];
@@ -148,7 +149,7 @@ static void SetScaleAndPos(Mat44 * matPtr, const float scale, const Vec3 &pos)
 
 static void SetupGroundPlanePipeline(ID3D11Device* pd3dDevice, ID3D11DeviceContext *pContext, ID3D11Buffer * pGlobalsCB)
 {
-	Mat44 mat; SetScaleAndPos(&mat, 30*6.0f, Vec3(g_S*3.39f+g_O, 1.28f, -0.003f) );
+	Mat44 mat; LoadIdentity(&mat); SetScaleAndPos(&mat, 30*6.0f, Vec3(g_S*3.39f+g_O, 1.28f, -0.003f) );
 	GenericPipelineSetup(pd3dDevice, pContext, pGlobalsCB, mat, MAKE_STR_PAIR(GROUND_EXAMPLE), "GroundExamplePS", MAKE_STR_SIZE_PAIR(cbMatGroundShader));
 
 	HRESULT hr;
@@ -338,23 +339,24 @@ bool InitResources(ID3D11Device* pd3dDevice, ID3D11DeviceContext *pContext, ID3D
 	res &= g_pMeshes[MESH_ROCK].ReadObj(pd3dDevice, MODEL_PATH "Rock_Overgrown_A.obj", 1.0f, true);
 
 
-	DWORD g_dwShaderFlags = D3D10_SHADER_OPTIMIZATION_LEVEL1;//D3D10_SHADER_ENABLE_STRICTNESS;
+	g_dwShaderFlags = D3DCOMPILE_OPTIMIZATION_LEVEL0;//D3D10_SHADER_ENABLE_STRICTNESS;
 #if defined( DEBUG ) || defined( _DEBUG )
     // Set the D3D10_SHADER_DEBUG flag to embed debug information in the shaders.
     // Setting this flag improves the shader debugging experience, but still allows 
     // the shaders to be optimized and to run exactly the way they will run in 
     // the release configuration of this program.
-    g_dwShaderFlags |= D3D10_SHADER_DEBUG;
+    g_dwShaderFlags |= D3DCOMPILE_DEBUG;
+	g_dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
 	CONST D3D10_SHADER_MACRO* pDefines = NULL;
-	g_vert_shader.CompileShaderFunction(pd3dDevice, L"shader_lighting.hlsl", pDefines, "RenderSceneVS", "vs_5_0", g_dwShaderFlags );
+	g_vert_shader.CompileShaderFunction(pd3dDevice, L"temp_ground-vs.hlsl", pDefines, "main", "vs_5_0", g_dwShaderFlags );
 
 	// depth only pre-pass
 	g_vert_shader_basic.CompileShaderFunction(pd3dDevice, L"shader_basic.hlsl", pDefines, "RenderSceneVS", "vs_5_0", g_dwShaderFlags );
 
 	// labels shader
-	g_pix_shader_basic_white.CompileShaderFunction(pd3dDevice, L"shader_basic.hlsl", pDefines, "WhitePS", "ps_5_0", g_dwShaderFlags );
+	//g_pix_shader_basic_white.CompileShaderFunction(pd3dDevice, L"shader_basic.hlsl", pDefines, "WhitePS", "ps_5_0", g_dwShaderFlags );
 
 	// noise data
 	CreateNoiseData(pd3dDevice);
@@ -421,9 +423,9 @@ bool InitResources(ID3D11Device* pd3dDevice, ID3D11DeviceContext *pContext, ID3D
 
 
 	SetupGroundPlanePipeline(pd3dDevice, pContext, pGlobalsCB);
-	SetupSpherePrimPipeline(pd3dDevice, pContext, pGlobalsCB);
-	SetupPirateExamplePipeline(pd3dDevice, pContext, pGlobalsCB);
-	SetupRockPipeline(pd3dDevice, pContext, pGlobalsCB);
+	//SetupSpherePrimPipeline(pd3dDevice, pContext, pGlobalsCB);
+	//SetupPirateExamplePipeline(pd3dDevice, pContext, pGlobalsCB);
+	//SetupRockPipeline(pd3dDevice, pContext, pGlobalsCB);
 	
 	for(int i=0; i<NUM_DRAWABLES; i++)
 	{
@@ -511,7 +513,7 @@ static bool GenericPipelineSetup(ID3D11Device* pd3dDevice, ID3D11DeviceContext *
 		//CONST D3D10_SHADER_MACRO sDefines[] = {{sIdxAndStr.str_name, NULL}, {haveDecals ? decals_enabled : NULL, NULL}, {i==DECALS_ENABLED_MIPMAPPED_ON ? decals_mip_mapped : NULL, NULL}, {NULL, NULL}};
 		CONST D3D10_SHADER_MACRO sDefines[] = {{sIdxAndStr.str_name, NULL}, {NULL, NULL}};
 
-		g_pix_shader[i*NUM_DRAWABLES+drawableIdx].CompileShaderFunction(pd3dDevice, L"shader_lighting.hlsl", sDefines, pixShaderEntryFunc, "ps_5_0", g_dwShaderFlags );
+		g_pix_shader[i*NUM_DRAWABLES+drawableIdx].CompileShaderFunction(pd3dDevice, L"temp_ground.hlsl", sDefines, pixShaderEntryFunc, "ps_5_0", g_dwShaderFlags );
 
 		CShaderPipeline &pipe = g_ShaderPipelines[i*NUM_DRAWABLES+drawableIdx];
 
@@ -569,7 +571,7 @@ static bool GenericPipelineSetup(ID3D11Device* pd3dDevice, ID3D11DeviceContext *
 	// update transformation cb
 	D3D11_MAPPED_SUBRESOURCE MappedSubResource;
 	V( pContext->Map( g_pMeshInstanceCB[drawableIdx], 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedSubResource ) );
-	((cbMeshInstance *)MappedSubResource.pData)->g_mLocToWorld = Transpose(mat); 
+	((cbMeshInstance *)MappedSubResource.pData)->g_mLocToWorld = (mat); 
 	((cbMeshInstance *)MappedSubResource.pData)->g_mWorldToLocal = Transpose(~mat); 
     pContext->Unmap( g_pMeshInstanceCB[drawableIdx], 0 );
 
@@ -653,7 +655,7 @@ void ReleaseSceneGraph()
 
 	g_vert_shader.CleanUp();
 	g_vert_shader_basic.CleanUp();
-	g_pix_shader_basic_white.CleanUp();
+	//g_pix_shader_basic_white.CleanUp();
 
 	for(int i=0; i<NUM_DRAWABLES; i++)
 	{

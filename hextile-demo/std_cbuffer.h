@@ -20,6 +20,8 @@ unistruct cbGlobals
 	Mat44	g_mWorldToView;
 	Mat44	g_mViewToWorld;
 	Mat44	g_mScrToView;
+	Mat44	g_mProjInv;
+	Mat44	g_mWindowInv;
 
 	int		g_iWidth;
 	int		g_iHeight;

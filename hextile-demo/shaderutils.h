@@ -7,6 +7,7 @@
 ID3D11RasterizerState * GetDefaultRasterSolid();
 ID3D11RasterizerState * GetDefaultRasterWire();
 ID3D11RasterizerState * GetDefaultRasterSolidCullFront();
+ID3D11RasterizerState* GetDefaultRasterSolidCullNone();
 ID3D11RasterizerState * GetDefaultRasterSolidCullBack();
 ID3D11SamplerState * GetDefaultShadowSampler();
 ID3D11SamplerState * GetDefaultSamplerWrap();

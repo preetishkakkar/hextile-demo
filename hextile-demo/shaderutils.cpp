@@ -12,6 +12,7 @@ static ID3D11SamplerState * m_pSamplerShadowPCF = NULL;
 static ID3D11RasterizerState * g_pRasterizerStateSolid = NULL;
 static ID3D11RasterizerState * g_pRasterizerStateWireframe = NULL;
 static ID3D11RasterizerState * g_pRasterizerStateSolidCullFront = NULL;
+static ID3D11RasterizerState* g_pRasterizerStateSolidCullNone = NULL;
 
 static ID3D11DepthStencilState * g_pDepthStencilState = NULL;
 static ID3D11DepthStencilState * g_pDepthStencilState_NoDepthWrite = NULL;
@@ -29,6 +30,9 @@ bool InitUtils(ID3D11Device* pd3dDevice)
     RasterDesc.DepthClipEnable = TRUE;
 	V_RETURN( pd3dDevice->CreateRasterizerState( &RasterDesc, &g_pRasterizerStateSolidCullFront ) );
 
+	RasterDesc.CullMode = D3D11_CULL_NONE;
+	V_RETURN(pd3dDevice->CreateRasterizerState(&RasterDesc, &g_pRasterizerStateSolidCullNone));
+
 	RasterDesc.CullMode = D3D11_CULL_BACK;
     V_RETURN( pd3dDevice->CreateRasterizerState( &RasterDesc, &g_pRasterizerStateSolid ) );
 
@@ -38,7 +42,7 @@ bool InitUtils(ID3D11Device* pd3dDevice)
 	// Create a depthstencil state
     D3D11_DEPTH_STENCIL_DESC	DSDesc;
     DSDesc.DepthEnable =        TRUE;
-    DSDesc.DepthFunc =          D3D11_COMPARISON_LESS_EQUAL;
+    DSDesc.DepthFunc =          D3D11_COMPARISON_LESS;
     DSDesc.DepthWriteMask =     D3D11_DEPTH_WRITE_MASK_ALL;
     DSDesc.StencilEnable =      FALSE;
     hr = pd3dDevice->CreateDepthStencilState( &DSDesc, &g_pDepthStencilState );
@@ -93,6 +97,7 @@ void DeinitUtils()
 	SAFE_RELEASE( g_pRasterizerStateSolid );
     SAFE_RELEASE( g_pRasterizerStateWireframe );
 	SAFE_RELEASE( g_pRasterizerStateSolidCullFront );
+	SAFE_RELEASE(g_pRasterizerStateSolidCullNone);
     SAFE_RELEASE( g_pSamplerStateWrap );
 	SAFE_RELEASE( g_pSamplerStateWrapAniso );
 	SAFE_RELEASE( g_pSamplerStateClamp );
@@ -138,6 +143,11 @@ ID3D11RasterizerState * GetDefaultRasterSolidCullBack()
 ID3D11RasterizerState * GetDefaultRasterSolidCullFront()
 {
 	return g_pRasterizerStateSolidCullFront;
+}
+
+ID3D11RasterizerState* GetDefaultRasterSolidCullNone()
+{
+	return g_pRasterizerStateSolidCullNone;
 }
 
 ID3D11DepthStencilState * GetDefaultDepthStencilState()

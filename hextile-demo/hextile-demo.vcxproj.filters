@@ -314,5 +314,11 @@
     <FxCompile Include="shader_shadow_resolve.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="temp_ground.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="fs_hextile.bin.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

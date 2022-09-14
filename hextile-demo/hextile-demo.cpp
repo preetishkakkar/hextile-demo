@@ -117,6 +117,8 @@ void InitApp()
 
 	const float scale = 0.04f;
 
+
+
     g_Camera.SetScalers( 0.2f*0.005f, 3*100.0f * scale );
     DirectX::XMVECTOR vEyePt, vEyeTo;
 
@@ -131,8 +133,8 @@ void InitApp()
 	const float g_O = 2*2.59f;
 	const float g_S = -1.0f;		// convert unity scene to right hand frame.
 
-	vEyeTo = DirectX::XMVectorSet(g_S*3.39f+g_O, 1.28f+0.3, -0.003f+1.5, 1.0f);
-	vEyePt = DirectX::XMVectorSet(g_S*3.39f+g_O-10, 1.28f+2.5, -0.003f, 1.0f);
+	vEyeTo = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	vEyePt = DirectX::XMVectorSet(0.0f, 15.0f, -25.0f, 1.0f);
 
     g_Camera.SetViewParams( vEyePt, vEyeTo );
 
@@ -240,7 +242,7 @@ void render_surface(ID3D11DeviceContext* pd3dImmediateContext, bool bSimpleLayou
 }
 
 
-Mat44 g_m44Proj, g_m44InvProj, g_mViewToScr, g_mScrToView;
+Mat44 g_m44Proj, g_m44InvProj, g_mViewToScr, g_mScrToView, g_mProjInv, g_mWindowInv;
 
 
 Vec3 XMVToVec3(const DirectX::XMVECTOR vec)
@@ -285,7 +287,7 @@ void CALLBACK OnD3D11FrameRender( ID3D11Device* pd3dDevice, ID3D11DeviceContext*
 	Mat44 mZflip; LoadIdentity(&mZflip);
 	SetColumn(&mZflip, 2, Vec4(0,0,-1,0));
 #ifndef LEFT_HAND_COORDINATES
-	world_to_view = mZflip * world_to_view * mZflip;
+	//world_to_view = world_to_view * mZflip;
 #else
 	world_to_view = world_to_view * mZflip;
 #endif
@@ -308,9 +310,11 @@ void CALLBACK OnD3D11FrameRender( ID3D11Device* pd3dDevice, ID3D11DeviceContext*
 	V( pd3dImmediateContext->Map( g_pGlobalsCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedSubResource ) );
 	((cbGlobals *)MappedSubResource.pData)->g_mWorldToView = Transpose(world_to_view);
 	((cbGlobals *)MappedSubResource.pData)->g_mViewToWorld = Transpose(view_to_world);
-	((cbGlobals *)MappedSubResource.pData)->g_mScrToView = Transpose(g_mScrToView);
+	((cbGlobals*)MappedSubResource.pData)->g_mScrToView = Transpose(g_mScrToView);
+	((cbGlobals*)MappedSubResource.pData)->g_mWindowInv = Transpose(g_mWindowInv);
+	((cbGlobals*)MappedSubResource.pData)->g_mProjInv = Transpose(g_mProjInv);
 	((cbGlobals *)MappedSubResource.pData)->g_mProj = Transpose(g_m44Proj);
-	((cbGlobals *)MappedSubResource.pData)->g_mViewProjection = Transpose(Trans);
+	((cbGlobals *)MappedSubResource.pData)->g_mViewProjection = Trans;
 	((cbGlobals *)MappedSubResource.pData)->g_vCamPos = view_to_world * Vec3(0,0,0);
 	((cbGlobals *)MappedSubResource.pData)->g_iWidth = DXUTGetDXGIBackBufferSurfaceDesc()->Width;
 	((cbGlobals *)MappedSubResource.pData)->g_iHeight = DXUTGetDXGIBackBufferSurfaceDesc()->Height;
@@ -344,26 +348,27 @@ void CALLBACK OnD3D11FrameRender( ID3D11Device* pd3dDevice, ID3D11DeviceContext*
     pd3dImmediateContext->ClearDepthStencilView( pDSV, D3D11_CLEAR_DEPTH, 1.0f, 0 );
 
 
-	pd3dImmediateContext->RSSetState( GetDefaultRasterSolidCullBack()  );
-	pd3dImmediateContext->OMSetDepthStencilState( GetDefaultDepthStencilState(), 0 );
+	//pd3dImmediateContext->RSSetState( GetDefaultRasterSolidCullBack()  );
+	//pd3dImmediateContext->OMSetDepthStencilState( GetDefaultDepthStencilState(), 0 );
 
-	render_surface(pd3dImmediateContext, true);
+	//render_surface(pd3dImmediateContext, true);
 
 	// resolve shadow map
-	if(g_bEnableShadows) g_shadowMap.ResolveToScreen(pd3dImmediateContext, g_tex_depth.GetReadOnlyDSV(), g_pGlobalsCB);
+	//if(g_bEnableShadows) g_shadowMap.ResolveToScreen(pd3dImmediateContext, g_tex_depth.GetReadOnlyDSV(), g_pGlobalsCB);
 
 	// restore depth state
-	pd3dImmediateContext->OMSetDepthStencilState( GetDefaultDepthStencilState_NoDepthWrite(), 0 );
+	//pd3dImmediateContext->OMSetDepthStencilState( GetDefaultDepthStencilState_NoDepthWrite(), 0 );
 
 	// switch to back-buffer
-	pd3dImmediateContext->OMSetRenderTargets( 1, &pRTV, g_tex_depth.GetReadOnlyDSV() );
+	pd3dImmediateContext->OMSetRenderTargets( 1, &pRTV, pDSV);
 	pd3dImmediateContext->ClearRenderTargetView( pRTV, ClearColor );
 
 
 	//
-	g_canvas.DrawCanvas(pd3dImmediateContext, g_pGlobalsCB);
+	//g_canvas.DrawCanvas(pd3dImmediateContext, g_pGlobalsCB);
 
 	// restore depth state
+	pd3dImmediateContext->RSSetState(GetDefaultRasterSolidCullNone());
 	pd3dImmediateContext->OMSetDepthStencilState( GetDefaultDepthStencilState_NoDepthWrite(), 0 );
 
 	
@@ -373,7 +378,7 @@ void CALLBACK OnD3D11FrameRender( ID3D11Device* pd3dDevice, ID3D11DeviceContext*
 
 
 	// fire off menu text
-	RenderText();
+	//RenderText();
 }
 
 
@@ -384,7 +389,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     _CrtSetDbgFlag( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 #endif
 
-	 
+	auto c = LoadLibrary(L"E:\\renderdoc.dll");
     // Set DXUT callbacks
     DXUTSetCallbackDeviceChanging( ModifyDeviceSettings );
     DXUTSetCallbackMsgProc( MsgProc );
@@ -403,7 +408,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     DXUTInit( true, true );
     DXUTSetCursorSettings( true, true ); // Show the cursor and clip it when in full screen
     DXUTCreateWindow( L"Hex-Tiling Demo." );
-	int dimX = 1280, dimY = 960;
+	int dimX = 1280, dimY = 720;
 	DXUTCreateDevice( D3D_FEATURE_LEVEL_11_0, true, dimX, dimY);
     //DXUTCreateDevice( D3D_FEATURE_LEVEL_11_0, true, 1024, 768);
     DXUTMainLoop(); // Enter into the DXUT render loop
@@ -449,8 +454,10 @@ HRESULT CALLBACK OnD3D11ResizedSwapChain( ID3D11Device* pd3dDevice, IDXGISwapCha
 
 
 	{
-		float fAspectRatio = fS;
-		g_Camera.SetProjParams( (fFov*M_PI)/360, fAspectRatio, fNear, fFar );
+		float fAspectRatio = (float)w / (float)h;
+		g_Camera.SetProjParams( (60*M_PI)/360, fAspectRatio, 0.1f, 1000.0f);
+		auto tmp = ToMat44(g_Camera.GetProjMatrix());
+		g_m44Proj = tmp;
 	}
 
 
@@ -463,7 +470,8 @@ HRESULT CALLBACK OnD3D11ResizedSwapChain( ID3D11Device* pd3dDevice, IDXGISwapCha
 	g_mViewToScr = mToScr * g_m44Proj;
 	g_mScrToView = ~g_mViewToScr;
 	g_m44InvProj = ~g_m44Proj;
-
+	g_mProjInv = g_m44InvProj;
+	g_mWindowInv = ~mToScr;
 	
 
 
@@ -900,7 +908,7 @@ void myFrustum(float * pMat, const float fLeft, const float fRight, const float 
 	pMat[2*4 + 2] = -fFar / (fFar - fNear);
 	pMat[2*4 + 3] = -1;
 
-#ifdef LEFT_HAND_COORDINATES
+//#ifdef LEFT_HAND_COORDINATES
 	for(int r=0; r<4; r++) pMat[2*4 + r] = -pMat[2*4 + r];
-#endif
+//#endif
 }
